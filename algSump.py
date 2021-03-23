@@ -9,6 +9,7 @@ DATE: 3/22/2021
 REVISION HISTORY
   DATE        AUTHOR          CHANGES
   yyyy/mm/dd  --------------- -------------------------------------
+  2021/03/23  BrucesHobbies   Updated json file load
 
 
 LICENSE:
@@ -56,7 +57,8 @@ import time
 import datetime
 
 
-HP2WATTS = 745.7      # HP to Watts
+HP2WATTS = 745.7            # HP to Watts
+WATTS2HP = (1.0/HP2WATTS)   # Watts to HP
 
 try :
     import json
@@ -78,19 +80,20 @@ cfgAlg = {
     u"startupTime": 2,
     u"shutdownTime": 2,
 
-    u"runtime": [],
-    u"meanRuntime": [],
-    u"stdevRuntime": [],
-
     # Number of motor cycles to establish means and standard deviations
     u"SIGMA_MOTOR_CYCLES": 21,
 
     # Lower sigma bound is tighter threshold, but more false positives
-    u"POWER_SIGMA_ALG_ENABLE": 1,
-    u"POWER_SIGMA_BOUND": 3.0,     
-
-    u"RUNTIME_SIGMA_ALG_ENABLE": 1,
+    u"RUNTIME_SIGMA_ALG_ENABLE": 0,
     u"RUNTIME_SIGMA_BOUND": 3.0,
+
+    u"runtime": [],
+    u"meanRuntime": [],
+    u"stdevRuntime": [],
+
+    # Lower sigma bound is tighter threshold, but more false positives
+    u"POWER_SIGMA_ALG_ENABLE": 0,
+    u"POWER_SIGMA_BOUND": 3.0,     
 
     u"power": [],
     u"meanPower": [],
@@ -120,11 +123,11 @@ def calAlgInit(chanNames) :
         with open(cfgAlgFileName, 'r') as cfgAlgFile :
             cfgAlg_temp = json.load(cfgAlgFile)
             # Replace default values with values from file
-            for motor in cfgAlg:  
+            for motor in motorAlgs:  
                 if motor in cfgAlg_temp :
-                    for item in cfgAlg[motor] :
+                    for item in motorAlgs[motor] :
                         if item in cfgAlg_temp[motor] :
-                            cfgAlg[motor][item] = cfgAlg_temp[motor][item]
+                            motorAlgs[motor][item] = cfgAlg_temp[motor][item]
 
     # If file does not exist, it will be created using defaults.
     except IOError :
@@ -132,18 +135,27 @@ def calAlgInit(chanNames) :
 
     # === BEGIN USER CONFIGURATION OVERRIDES =======================================
     # "SumpPump" - Option A: Sigma method
-    motorAlgs[chanNames[0]]["POWER_SIGMA_ALG_ENABLE"] = 0
-    motorAlgs[chanNames[0]]["POWER_SIGMA_BOUND"] = 3.0
-    motorAlgs[chanNames[0]]["RUNTIME_SIGMA_ALG_ENABLE"] = 0
-    motorAlgs[chanNames[0]]["RUNTIME_SIGMA_BOUND"] = 3.0
-    motorAlgs[chanNames[0]]["startupTime"] = 2
-    motorAlgs[chanNames[0]]["shutdownTime"] = 2
+    motorAlgs[chanNames[0]]["SIGMA_MOTOR_CYCLES"] = 5        ## Number of on-periods to average
     
-    """
+    motorAlgs[chanNames[0]]["POWER_SIGMA_ALG_ENABLE"] = 1    ## Enabled
+    motorAlgs[chanNames[0]]["POWER_SIGMA_BOUND"] = 1.0       ## Changed from 3.0 to 1.0
+
+    motorAlgs[chanNames[0]]["RUNTIME_SIGMA_ALG_ENABLE"] = 1  ## Enabled
+    motorAlgs[chanNames[0]]["RUNTIME_SIGMA_BOUND"] = 1.0     ## Changed from 3.0 to 1.0
+
+    motorAlgs[chanNames[0]]["startupTime"] = 2               ## seconds
+    motorAlgs[chanNames[0]]["shutdownTime"] = 2              ## seconds
+    
+    motorAlgs[chanNames[0]]["HP_ALG_ENABLE"] = 0
+    # motorAlgs[chanNames[0]]["MOTOR_HP"] = 2./4.
+    # motorAlgs[chanNames[0]]["MOTOR_LOW_HP"] = 0.5
+    # motorAlgs[chanNames[0]]["MOTOR_HIGH_HP"] = 1.15
+
     # "HVAC" - Option B: HP/Wattage percent change
     if len(chanNames) > 1 :
         motorAlgs[chanNames[1]]["POWER_SIGMA_ALG_ENABLE"] = 1
         motorAlgs[chanNames[1]]["POWER_SIGMA_BOUND"] = 3.0
+
         motorAlgs[chanNames[1]]["RUNTIME_SIGMA_ALG_ENABLE"] = 0
         motorAlgs[chanNames[1]]["RUNTIME_SIGMA_BOUND"] = 3.0
 
@@ -154,7 +166,6 @@ def calAlgInit(chanNames) :
 
         motorAlgs[chanNames[1]]["startupTime"] = 120        # Heat start up time in seconds
         motorAlgs[chanNames[1]]["shutdownTime"] = 135       # Heating cool down time in seconds
-    """
 
     # === END USER CONFIGURATION OVERRIDES ==========================================
 
@@ -240,7 +251,7 @@ def motorStats(chan, chanNames, runTime, tInterval) :
 
     t = time.time()
 
-    hdr = "ChanName,Runtime (s),Avg (W),StdDev (W)"
+    hdr = "Runtime (s),Avg (W),StdDev (W)"
 
     # Remove motor startup and power down time
     if motorAlgs[chanNames[chan]]["startupTime"] % tInterval :
@@ -283,39 +294,27 @@ if __name__ == '__main__':
     tInterval = 0.5
     chanNames = ["SumpPump", "HVAC"]
 
-    meanPower = 300
-    stdPower = 30
+    meanPower = 100
+    stdPower = 5.0
 
-    meanRuntime = 60
-    stdRuntime = 10
+    meanRuntime = 10
+    stdRuntime = 3.0
 
-    calAlgInit()
+    calAlgInit(chanNames)
+    chan=0
 
-    chanName = chanNames[1]
-
-    for n in range(motorAlgs[chanName]["SIGMA_MOTOR_CYCLES"]) :
+    runtime = 0
+    cnt = round((meanRuntime + (stdRuntime * np.random.randn())) / tInterval)
+    print(cnt)
+    for n in range(cnt) :
         power = meanPower + stdPower * np.random.randn()
-        runtime = meanRuntime + stdRuntime * np.random.randn()
-        print(round(power,1), round(runtime,1), calAlg(chanName, power, runtime))
+        print(power)
+        runtime += tInterval
+        motorStatsAppend(chan, power)
 
-    for n in range(10) :
-        power = meanPower + stdPower * np.random.randn()
-        runtime = meanRuntime + stdRuntime * np.random.randn()
-        print(round(power,1), round(runtime,1), calAlg(chanName, power, runtime))
-
-    for n in range(5) :
-        power = meanPower + 2*stdPower * np.random.randn()
-        runtime = meanRuntime + stdRuntime * np.random.randn()
-        print(round(power,1), round(runtime,1), calAlg(chanName, power, runtime))
-
-    for n in range(5) :
-        power = meanPower + stdPower * np.random.randn()
-        runtime = meanRuntime + 2*stdRuntime * np.random.randn()
-        print(round(power,1), round(runtime,1), calAlg(chanName, power, runtime))
-
-    for n in range(5) :
-        power = meanPower + stdPower * np.random.randn()
-        runtime = meanRuntime + stdRuntime * np.random.randn()
-        print(round(power,1), round(runtime,1), calAlg(chanName, power, runtime))
+    hdr, rtnString, alertMsg = motorStats(chan, chanNames, runtime, tInterval)
+    print(hdr)
+    print(rtnString)
+    print(alertMsg)
 
     print("Done.")
