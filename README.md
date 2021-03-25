@@ -68,6 +68,8 @@ Send status and alert messages via email or SMS to a cell phone
   - Email
   - SMS text message to your cell phone
 
+A Python script is included for plotting the sump pump cycles, energy profile, etc. It provides a template that includes various plotting intervals over last 48 hours, last 2 weeks, last month, last year, etc.
+
 Monitoring of the pump motor power is done through a PZEM module available off Amazon.
 
 ![Figure 1: PZEM](https://github.com/BrucesHobbies/sumpMaster/blob/main/figures/figure1.png)
