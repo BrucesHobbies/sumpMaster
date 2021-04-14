@@ -8,7 +8,7 @@ All Rights Reserved
 SumpMaster is designed to detect abnormal operation of one or more sump pumps. This includes components such as the motor, pump, float switches, one-way valves, and discharge pipes. 
 Simple float switch water level alarms don't address float switches that are stuck on. Likewise for frozen discharge pipes, leaky one-way valves, etc. unless they lead to the water level rising above the alarm level.
 
-SumpMaster, when properly set up, detects abnormal operation the sump pump motor run time and power consumed. For most sump pumps the run time is very consistent as it is the time for the water to be pumped out of the basin. Likewise the power level is very consistent and depends on the check valve, discharge pipe length, diameter, and height above basin.
+SumpMaster, when properly set up, detects abnormal operation of the sump pump motor run time and power consumed. For most sump pumps the run time is very consistent as it is the time for the water to be pumped out of the basin. Likewise the power level is very consistent and depends on the check valve, discharge pipe length, diameter, and height above basin.
 
 Potential Conditions that would generate Runtime / Power Alerts (modify settings in algSump.py):
 - Frozen discharge/drain pipe (detection of abnormal power)
